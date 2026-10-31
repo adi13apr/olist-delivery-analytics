@@ -1,2 +1,5 @@
 # Keep fixture bytes exact (BOM, CRLF) so CI parses the same files as Windows.
 tests/fixtures/*.csv -text
+
+# Exports are written with LF; keep them byte-identical for IMPORTDATA.
+data/exports/*.csv text eol=lf
