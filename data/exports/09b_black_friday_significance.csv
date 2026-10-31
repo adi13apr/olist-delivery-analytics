@@ -1,0 +1,2 @@
+test,n_baseline,n_event,median_baseline_days,median_event_days,median_diff_days,mean_baseline_days,mean_event_days,u_statistic,p_value,prob_event_slower,rank_biserial
+mann_whitney_u_two_sided,4570,2411,11.41,14.84,3.43,13.25,17.43,6779501.5,1.09E-56,0.6153,0.2306
