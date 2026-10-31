@@ -9,13 +9,13 @@ from conftest import FIXTURES
 # Data rows in each fixture file (the reviews file has a multi-line comment,
 # so its line count is higher than its row count).
 EXPECTED_ROWS = {
-    "raw_orders": 13,
-    "raw_order_items": 8,
-    "raw_order_payments": 12,
-    "raw_order_reviews": 12,
-    "raw_customers": 12,
-    "raw_products": 4,
-    "raw_sellers": 2,
+    "raw_orders": 28,
+    "raw_order_items": 24,
+    "raw_order_payments": 27,
+    "raw_order_reviews": 26,
+    "raw_customers": 27,
+    "raw_products": 5,
+    "raw_sellers": 3,
     "raw_category_translation": 3,
 }
 

@@ -12,7 +12,7 @@ EXPECTED_VIOLATIONS = {
     "04_delivery_before_purchase": 1,        # o05
     "05_multiple_reviews_per_order": 1,      # o02 has r02a and r02b
     "06_review_id_reused": 1,                # r10 on o03 and o09
-    "07_orders_without_review": 1,           # o07
+    "07_orders_without_review": 2,           # o07, o34
     "08_carrier_before_purchase": 1,         # o09
     "09_customer_before_carrier": 1,         # o10
     "10_undelivered_with_delivery_date": 1,  # o06 is canceled but has a delivery date
@@ -25,7 +25,7 @@ EXPECTED_VIOLATIONS = {
 
 EXPECTED_EXCLUSIONS = {
     "duplicate_order_id": 2,  # both o08 rows
-    "status_not_delivered": 2,  # o06, o07
+    "status_not_delivered": 6,  # o06, o07, o23, o27, o30, o31
     "missing_purchase_date": 1,  # o12
     "missing_delivered_date": 1,  # o04
     "missing_estimated_date": 1,  # o11
@@ -39,6 +39,18 @@ EXPECTED_METRICS = {
     "o03": (7.25, 6.5, False),  # delivered 18:00 on the estimated date: on time
     "o09": (6.0, 10.58, False),
     "o10": (3.5, 1.58, True),
+    # Phase 2 rows: every timestamp is on the hour or half hour, so the values are exact.
+    "o20": (5.0, 9.58, False),
+    "o21": (4.0, 8.58, False),
+    "o22": (6.0, 8.58, False),
+    "o24": (8.0, 5.58, True),
+    "o25": (7.0, 10.58, False),
+    "o26": (9.0, 6.42, True),
+    "o28": (12.0, 8.04, True),
+    "o29": (6.0, 9.98, False),
+    "o32": (5.0, 7.58, False),
+    "o33": (3.0, 9.58, False),
+    "o34": (10.0, 7.58, True),
 }
 
 
@@ -66,7 +78,7 @@ def test_reconciliation_balances(con):
     raw, eligible, excluded, balanced = con.execute(
         "SELECT raw_order_rows, eligible_orders, excluded_orders, is_balanced FROM v_delivery_reconciliation"
     ).fetchone()
-    assert (raw, eligible, excluded, balanced) == (13, 5, 8, True)
+    assert (raw, eligible, excluded, balanced) == (28, 16, 12, True)
 
 
 def test_delivery_metrics(con):
@@ -102,11 +114,12 @@ def test_orphan_items_flagged(con):
 
 def test_product_category_fallbacks(con):
     categories = dict(con.execute("SELECT product_id, category FROM stg_products").fetchall())
-    assert categories == {"p01": "perfumery", "p02": "art", "p03": "uncategorized", "p04": "pc_gamer"}
+    assert categories == {"p01": "perfumery", "p02": "art", "p03": "uncategorized", "p04": "pc_gamer",
+                          "p05": "health_beauty"}
 
 
 def test_report_renders(con):
     report = quality_report.build_report(con)
-    assert "| 13 | 5 | 8 | yes |" in report
+    assert "| 28 | 16 | 12 | yes |" in report
     for check in checks.CHECKS:
         assert f"`{check.id}`" in report
