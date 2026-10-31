@@ -54,6 +54,7 @@ EXPORT_NAMES = [
     "09_black_friday",
     "09b_black_friday_significance",
     "10_late_root_cause",
+    "11_delivery_tail_by_month",
 ]
 
 
@@ -153,16 +154,17 @@ def test_01_monthly_kpis(results):
     # GMV orders (o27 unavailable); eligible days 8, 7, 9, 12, 6 -> mean 8.4, median 8;
     # on time o25, o29 = 2/5.
     # Jan: 10 orders (o08 duplicate left out, o12 has no purchase date); GMV orders exclude
-    # o06 canceled = 9, including o04/o05/o07/o11 with no items (GMV 0); GMV = o01 178.90 +
-    # o02 58.90 + o03 35.50 + o09 120 + o10 58.90 = 452.20; days 4.25, 10.5, 7.25, 6, 3.5.
+    # o06 canceled = 9, of which o04/o05/o07/o11 have no items, so AOV is over 5 orders;
+    # GMV = o01 178.90 + o02 58.90 + o03 35.50 + o09 120 + o10 58.90 = 452.20 -> AOV 90.44.
+    # Days 4.25, 10.5, 7.25, 6, 3.5.
     assert_rows(results["01_monthly_kpis"], [
-        dict(month_start="2017-10-01", orders=3, gmv_orders=2, gmv=165.00, aov=82.50,
+        dict(month_start="2017-10-01", orders=3, gmv_orders=2, gmv=165.00, aov_orders=2, aov=82.50,
              eligible_orders=2, avg_delivery_days=5.0, median_delivery_days=5.0, on_time_rate=1.0),
-        dict(month_start="2017-11-01", orders=8, gmv_orders=7, gmv=624.50, aov=89.21,
+        dict(month_start="2017-11-01", orders=8, gmv_orders=7, gmv=624.50, aov_orders=7, aov=89.21,
              eligible_orders=5, avg_delivery_days=8.4, median_delivery_days=8.0, on_time_rate=0.4),
-        dict(month_start="2017-12-01", orders=2, gmv_orders=2, gmv=165.00, aov=82.50,
+        dict(month_start="2017-12-01", orders=2, gmv_orders=2, gmv=165.00, aov_orders=2, aov=82.50,
              eligible_orders=2, avg_delivery_days=4.0, median_delivery_days=4.0, on_time_rate=1.0),
-        dict(month_start="2018-01-01", orders=10, gmv_orders=9, gmv=452.20, aov=50.24,
+        dict(month_start="2018-01-01", orders=10, gmv_orders=9, gmv=452.20, aov_orders=5, aov=90.44,
              eligible_orders=5, avg_delivery_days=6.3, median_delivery_days=6.0, on_time_rate=0.6),
     ])
 
@@ -293,8 +295,9 @@ def test_09_black_friday(results):
     # Event (4 days): o25 o26 o27(unavailable) o28; GMV 240 + 58.90 + 58.90 = 357.80 over 3;
     #   delivered 7, 9, 12 days, o26 and o28 late. o29 (Nov 28 00:30) is outside both.
     rows = {r["metric"]: r for r in results["09_black_friday"]}
+    # Every GMV order in both periods has items, so aov_orders = gmv_orders.
     assert list(rows) == ["days_in_period", "orders", "orders_per_day", "gmv", "gmv_per_day",
-                          "gmv_orders", "aov", "eligible_orders", "avg_delivery_days",
+                          "gmv_orders", "aov_orders", "aov", "eligible_orders", "avg_delivery_days",
                           "median_delivery_days", "late_rate"]
     expected = {
         "days_in_period": (28, 4, -24, -0.8571),
@@ -303,6 +306,7 @@ def test_09_black_friday(results):
         "gmv": (372.80, 357.80, -15.0, -0.0402),
         "gmv_per_day": (13.31, 89.45, 76.14, 5.7183),
         "gmv_orders": (5, 3, -2, -0.4),
+        "aov_orders": (5, 3, -2, -0.4),
         "aov": (74.56, 119.27, 44.71, 0.5996),
         "eligible_orders": (3, 3, 0, 0.0),
         "avg_delivery_days": (6.0, 9.33, 3.33, 0.5556),
@@ -368,6 +372,31 @@ def test_10_late_root_cause(results):
     ], abs_tol=0.0051)
 
 
+def test_11_delivery_tail_by_month(results):
+    # quantile_cont interpolates at position q * (n - 1) in the sorted values.
+    # Oct 4, 6: p90 = 4 + 0.9 * 2 = 5.8; p99 = 4 + 0.99 * 2 = 5.98.
+    # Nov 6, 7, 8, 9, 12: p90 at 3.6 = 9 + 0.6 * 3 = 10.8; p99 at 3.96 = 9 + 0.96 * 3 = 11.88.
+    # Dec 3, 5: p90 4.8; p99 4.98.
+    # Jan 3.5, 4.25, 6, 7.25, 10.5: p90 = 7.25 + 0.6 * 3.25 = 9.2; p99 = 7.25 + 0.96 * 3.25 = 10.37.
+    # Open orders: Nov o30, o31 shipped (o27 unavailable is not open); Jan o07 shipped.
+    # Last eligible delivery is o34 on 2018-03-02: 122 days after 31 Oct, 92 after 30 Nov,
+    # 61 after 31 Dec, 30 after 31 Jan.
+    assert_rows(results["11_delivery_tail_by_month"], [
+        dict(month_start="2017-10-01", orders=3, open_orders=0, open_order_share=0.0, eligible_orders=2,
+             median_delivery_days=5.0, p90_delivery_days=5.8, p99_delivery_days=5.98,
+             max_delivery_days=6.0, min_days_observable=122),
+        dict(month_start="2017-11-01", orders=8, open_orders=2, open_order_share=0.25, eligible_orders=5,
+             median_delivery_days=8.0, p90_delivery_days=10.8, p99_delivery_days=11.88,
+             max_delivery_days=12.0, min_days_observable=92),
+        dict(month_start="2017-12-01", orders=2, open_orders=0, open_order_share=0.0, eligible_orders=2,
+             median_delivery_days=4.0, p90_delivery_days=4.8, p99_delivery_days=4.98,
+             max_delivery_days=5.0, min_days_observable=61),
+        dict(month_start="2018-01-01", orders=10, open_orders=1, open_order_share=0.1, eligible_orders=5,
+             median_delivery_days=6.0, p90_delivery_days=9.2, p99_delivery_days=10.37,
+             max_delivery_days=10.5, min_days_observable=30),
+    ])
+
+
 # --- real default thresholds --------------------------------------------
 
 @pytest.mark.parametrize("name", [
@@ -417,10 +446,10 @@ def test_export_files_are_sheets_friendly(fixture_load, tmp_path):
         header = data.split(b"\n", 1)[0].decode()
         assert header and "index" not in header.split(","), name
     monthly = (tmp_path / "01_monthly_kpis.csv").read_text(encoding="utf-8").splitlines()
-    assert monthly[0] == ("month_start,orders,gmv_orders,gmv,aov,eligible_orders,"
+    assert monthly[0] == ("month_start,orders,gmv_orders,gmv,aov_orders,aov,eligible_orders,"
                           "avg_delivery_days,median_delivery_days,on_time_rate")
     # gmv is DECIMAL (keeps 2 places); aov and the averages are DOUBLE (no trailing zeros).
-    assert monthly[1] == "2017-10-01,3,2,165.00,82.5,2,5,5,1"
+    assert monthly[1] == "2017-10-01,3,2,165.00,2,82.5,2,5,5,1"
     wow = (tmp_path / "02_wow_delivery_by_state.csv").read_text(encoding="utf-8").splitlines()
     assert wow[1] == "SP,2017-11-20,2,8,,,1,1,TRUE"
 

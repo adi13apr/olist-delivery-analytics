@@ -6,7 +6,9 @@
 --   orders                all orders placed in the month, any status
 --   gmv_orders            orders whose status is neither canceled nor unavailable
 --   gmv                   sum of order_items.price over gmv_orders (freight excluded)
---   aov                   gmv / gmv_orders
+--   aov_orders            gmv_orders with at least one item (an order with no items has
+--                         no basket, so it would drag AOV towards 0)
+--   aov                   gmv / aov_orders
 --   eligible_orders       orders eligible for delivery metrics (stg_orders.is_delivery_metric_eligible)
 --   avg_delivery_days     mean of stg_orders.delivery_days over eligible orders
 --   median_delivery_days  median of the same
@@ -22,6 +24,7 @@ WITH monthly AS (
         count(*) AS orders,
         count(*) FILTER (WHERE o.is_gmv_order) AS gmv_orders,
         sum(o.order_gmv) AS gmv,
+        count(*) FILTER (WHERE o.is_gmv_order AND o.item_count > 0) AS aov_orders,
         count(*) FILTER (WHERE o.is_delivery_metric_eligible) AS eligible_orders,
         avg(o.delivery_days) FILTER (WHERE o.is_delivery_metric_eligible) AS avg_delivery_days,
         median(o.delivery_days) FILTER (WHERE o.is_delivery_metric_eligible) AS median_delivery_days,
@@ -37,7 +40,8 @@ SELECT
     orders,
     gmv_orders,
     round(coalesce(gmv, 0), 2) AS gmv,
-    round(gmv / nullif(gmv_orders, 0), 2) AS aov,
+    aov_orders,
+    round(gmv / nullif(aov_orders, 0), 2) AS aov,
     eligible_orders,
     round(avg_delivery_days, 2) AS avg_delivery_days,
     round(median_delivery_days, 2) AS median_delivery_days,

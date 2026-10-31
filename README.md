@@ -148,6 +148,7 @@ split into `a` and `b` files.
 | [09_black_friday](sql/analysis/09_black_friday.sql) | Black Friday 2017 vs the 4 weeks before: daily orders, GMV, AOV, delivery days, late rate |
 | `09b` ([significance.py](scripts/significance.py)) | Is the change in delivery days beyond chance? Mann-Whitney U, with effect size |
 | [10_late_root_cause](sql/analysis/10_late_root_cause.sql) | Which stage (approval, seller dispatch, carrier transit) makes late orders late, overall and in the states flagged by 02 |
+| [11_delivery_tail_by_month](sql/analysis/11_delivery_tail_by_month.sql) | Is the late-window improvement real or right-censoring? Delivery-day percentiles (median, p90, p99), open-order share and observation window by month |
 
 ### Metric definitions
 
@@ -156,7 +157,7 @@ split into `a` and `b` files.
 | Orders | Distinct orders placed, any status, bucketed by `order_purchase_timestamp`. |
 | GMV order | An order whose status is neither `canceled` nor `unavailable`. |
 | **GMV** | Sum of `order_items.price` over GMV orders. **Freight is excluded.** |
-| **AOV** | GMV / number of GMV orders. GMV orders with no items count with a GMV of 0. There are 8 on the real data (5 `created`, 2 `invoiced`, 1 `shipped`). |
+| **AOV** | GMV / number of GMV orders **with at least one item** (`aov_orders` in 01 and 09). A GMV order with no items has no basket, so it is left out of the denominator. There are 8 such orders on the real data (5 `created`, 2 `invoiced`, 1 `shipped`). |
 | Delivery days, late, on time | `delivery_days` and `is_late` come from `stg_orders` and are never re-derived. They cover delivery-eligible orders only (`is_delivery_metric_eligible`). On-time rate = share of eligible orders with `is_late = false`. Late rate (SLA breach rate) = the rest. |
 | Review metrics | Latest review per order only (`is_latest_for_order`). Orders without a review are counted in `orders_without_review` and never scored. Low-score share = reviews of 1 or 2 stars / reviewed orders (order defect proxy). |
 | Repeat customer | A `customer_unique_id` with more than one GMV order. `customer_id` is issued per order, so it cannot identify a returning customer. |
@@ -166,7 +167,7 @@ split into `a` and `b` files.
 
 ### Trend window and excluded months
 
-Trend views (01, 02, 07a) use only complete months. `int_months` lists every
+Trend views (01, 02, 07a, 11) use only complete months. `int_months` lists every
 calendar month from the first purchase to the last, including empty ones. A
 month qualifies if its orders are at least 10% of the median month's orders.
 The trend window is the longest unbroken run of qualifying months.
@@ -187,9 +188,12 @@ with different data changes it.
 
 **Right-censoring at the end of the window.** An order still in transit when
 the data was extracted hasn't been delivered, so it isn't eligible for
-delivery metrics. The last months of the window are therefore missing their
-slowest deliveries. That biases mid-to-late 2018 delivery days down and the
-on-time rate up, so treat any improvement in those months with caution.
+delivery metrics. The last months of the window can therefore be missing their
+slowest deliveries, which biases delivery days down and the on-time rate up.
+Query 11 measures how far this can go. Censored orders are a subset of each
+month's open orders (`open_order_share`), and only deliveries slower than
+`min_days_observable` can be hidden. So the effect is limited to the extreme
+tail; FINDINGS.md has the numbers.
 
 ### Volume thresholds
 
