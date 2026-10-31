@@ -14,8 +14,9 @@ Stack: Python 3.13, DuckDB, SciPy, pytest, GitHub Actions, Google Sheets.
 
 ## Dashboard
 
-- Dashboard: _link to be added_
-- Screenshot: _to be added_ (`docs/dashboard.png`)
+[Olist Delivery Operations Dashboard (Google Sheets)](https://docs.google.com/spreadsheets/d/1VxoBfQQzs--cVVgIzuSYAyRKOBbMa-WA6PMqS0w9GDE/edit?usp=sharing)
+
+![Olist Delivery Operations Dashboard: headline KPIs, on-time rate by month and late-delivery rate by state](docs/dashboard.png)
 
 ## Layout
 
