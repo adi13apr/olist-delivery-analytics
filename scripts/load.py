@@ -1,4 +1,4 @@
-"""Load the Olist CSVs into DuckDB as raw_ tables and build the staging views.
+"""Load the Olist CSVs into DuckDB as raw_ tables and build the staging and analysis-base views.
 
 Every column has an explicit type, so the real data and the test fixtures get
 the same schema (DuckDB's type sniffing would read zip prefixes such as
@@ -21,6 +21,7 @@ import duckdb
 
 ROOT = Path(__file__).resolve().parents[1]
 STAGING_SQL = ROOT / "sql" / "01_staging.sql"
+ANALYSIS_BASE_SQL = ROOT / "sql" / "02_analysis_base.sql"
 TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 TS = "TIMESTAMP"
@@ -147,6 +148,7 @@ def load_table(con, table, path, columns):
 
 def build_staging(con):
     con.execute(STAGING_SQL.read_text(encoding="utf-8"))
+    con.execute(ANALYSIS_BASE_SQL.read_text(encoding="utf-8"))
 
 
 def load(raw_dir, db_path):
