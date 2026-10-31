@@ -1,0 +1,2 @@
+# Keep fixture bytes exact (BOM, CRLF) so CI parses the same files as Windows.
+tests/fixtures/*.csv -text
